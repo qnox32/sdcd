@@ -1,4 +1,5 @@
 #include <kernel.h>
+#include <unistd.h>
 #include <loadfile.h>
 #include <stdio.h>
 #include <malloc.h>
@@ -10,6 +11,12 @@
 #include <sifrpc.h>
 #include <libpad.h>
 #include <errno.h>
+#include <string.h>
+#define NEWLIB_PORT_AWARE
+#include <fileXio_rpc.h>
+#include <iopheap.h>
+#include <iopcontrol.h>
+#include <usbhdfsd-common.h>
 
 #define RPC_ID 0x1a1a1a1b
 #define MSG_BUFFER_SIZE 0x80000  /* 512KB */
@@ -20,6 +27,11 @@
 #define D_PRINTF(format, args...) do {  scr_printf(format, ##args); \
                                         printf(format, ##args); } while(0)
 
+static int mx4indx;
+typedef enum DEVICES_ID {
+    BDM_USB = 0,
+    BDM_MX4
+} BD_DEVID;
 /* USB log file descriptor */
 static int usb_log_fd = -1;
 static char usb_log_name[256];
@@ -79,7 +91,7 @@ static uint32_t mx4sio_mod_id;
 struct iop_mod_t{
     char *name;
     uint8_t *irx;
-    uint32_t *size;
+    unsigned int *size;
 };
 
 struct iop_mod_t iop_mods[8] = {
@@ -108,6 +120,29 @@ static int modules_init()
     return 0;
 }
 
+int LookForBDMDevice(enum DEVICES_ID DEV)
+{
+    static const char* DEVICES[] = {"usb", "sdc"};
+    static char mass_path[] = "massX:";
+	static char DEVID[5];
+    int dd;
+    int x = 0;
+    for (x = 0; x < 5; x++)
+    {
+        mass_path[4] = '0' + x;
+        if ((dd = fileXioDopen(mass_path)) >= 0) {
+            int *intptr_ctl = (int *)DEVID;
+            *intptr_ctl = fileXioIoctl(dd, USBMASS_IOCTL_GET_DRIVERNAME, "");
+            close(dd);
+	        if (!strncmp(DEVID, DEVICES[DEV], 3))
+	        {
+	        	return x;
+	        	printf("%s: Found at mass%d:/\n", __func__, x);
+	        }
+        }
+    }
+    return -1;
+}
 
 /* rpc */
 static void *rpc_receiver(int func, char *data, int size)
@@ -209,11 +244,11 @@ static int test_proc_read()
     int rv;
     int fd;
     char *buffer = NULL;
-
+    static char* zero_bin_path = "mass1:zero.bin";
     D_PRINTF("Starting read test\n");
-
+    zero_bin_path[4] = '0' + mx4indx;
     /* USB loaded first, MX4SIO *should* be mass1 */
-    fd = open("mass1:zero.bin", O_RDONLY);
+    fd = open(zero_bin_path, O_RDONLY);
     if (fd <= 0) {
         D_PRINTF("Could not find zero.bin\n");
         return -1;
@@ -355,6 +390,10 @@ static int test_start(int verbose, int type)
             SleepThread();
         }
     }
+    if((mx4indx = LookForBDMDevice(BDM_MX4)) < 0) {
+        D_PRINTF("MX4SIO Device not found\n");
+        return -1;
+    }
     
     /* give mx4sio time to init */
     nanosleep((const struct timespec[]){{2, 0}}, NULL);
@@ -374,13 +413,17 @@ static int test_start(int verbose, int type)
     default:
         break;
     }
-
+    int usbindx = 0;
+    if((usbindx = LookForBDMDevice(BDM_USB)) < 0) {
+        D_PRINTF("USB for logging not found. falling back to mass0:\n");
+        usbindx = 0;
+    }
     /* create log file on USB */
     for (int i = 0; i < 999; i++) {
         if (verbose) { 
-            rv = snprintf(usb_log_name, 256, "mass0:sdcard_log_verbose_%i_%i.txt", type, i);
+            rv = snprintf(usb_log_name, 256, "mass%d:sdcard_log_verbose_%i_%i.txt", usbindx, type, i);
         } else {
-            rv = snprintf(usb_log_name, 256, "mass0:sdcard_log_%i_%i.txt", type, i);
+            rv = snprintf(usb_log_name, 256, "mass%d:sdcard_log_%i_%i.txt", usbindx, type, i);
         }
 
         if (rv < 0)

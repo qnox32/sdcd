@@ -344,15 +344,15 @@ static int test_start(int verbose, int type)
 
     /* load appropriate mx4sio module */
     if (verbose == 0) {
-        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_irx, size_mx4sio_bd_rpc_irx, 0, NULL, NULL);
-        if (mx4sio_mod_id < 0) {
-            D_PRINTF("failed to load mx4sio module, abort.\n");
+        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_irx, size_mx4sio_bd_rpc_irx, 0, NULL, &rv);
+        if (mx4sio_mod_id < 0 || rv == MODULE_NO_RESIDENT_END) {
+            D_PRINTF("failed to load mx4sio module (ID=%d, ret=%d), abort.\n", mx4sio_mod_id, rv);
             return -1;
         }
     } else {
-        rv = SifExecModuleBuffer(mx4sio_bd_rpc_v_irx, size_mx4sio_bd_rpc_v_irx, 0, NULL, NULL);
-        if (rv < 0) {
-            D_PRINTF("failed to load mx4sio module\n");
+        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_v_irx, size_mx4sio_bd_rpc_v_irx, 0, NULL, &rv);
+        if (mx4sio_mod_id < 0 || rv == MODULE_NO_RESIDENT_END) {
+            D_PRINTF("failed to load mx4sio module (ID=%d, ret=%d)\n", mx4sio_mod_id, rv);
             SleepThread();
         }
     }

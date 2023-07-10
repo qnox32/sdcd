@@ -136,8 +136,8 @@ int LookForBDMDevice(enum DEVICES_ID DEV)
             close(dd);
 	        if (!strncmp(DEVID, DEVICES[DEV], 3))
 	        {
+	        	printf("%s: Found '%s' at mass%d:\n", __func__, DEVID, x);
 	        	return x;
-	        	printf("%s: Found at mass%d:/\n", __func__, x);
 	        }
         }
     }

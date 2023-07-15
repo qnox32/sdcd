@@ -11,6 +11,7 @@
 #include <libpad.h>
 #include <errno.h>
 
+#define MODULE_NO_RESIDENT_END	1 // only for readability
 #define RPC_ID 0x1a1a1a1b
 #define MSG_BUFFER_SIZE 0x80000  /* 512KB */
 
@@ -95,12 +96,12 @@ struct iop_mod_t iop_mods[8] = {
 
 static int modules_init()
 {
-    int rv;
+    int ID, rv;
 
     for (int i = 0; i < 8; i++) {
-        rv = SifExecModuleBuffer((void*)iop_mods[i].irx, *iop_mods[i].size, 0, NULL, NULL);
-        if (rv < 0) {
-            printf("failed to load %s, %i\n", iop_mods[i].name, rv);
+        ID = SifExecModuleBuffer((void*)iop_mods[i].irx, *iop_mods[i].size, 0, NULL, &rv);
+        if (ID < 0 || rv == MODULE_NO_RESIDENT_END) {
+            printf("failed to load %s, ID=%i, ret=%i\n", iop_mods[i].name, ID);
             return -1;
         }
     }
@@ -343,15 +344,15 @@ static int test_start(int verbose, int type)
 
     /* load appropriate mx4sio module */
     if (verbose == 0) {
-        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_irx, size_mx4sio_bd_rpc_irx, 0, NULL, NULL);
-        if (mx4sio_mod_id < 0) {
-            D_PRINTF("failed to load mx4sio module, abort.\n");
+        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_irx, size_mx4sio_bd_rpc_irx, 0, NULL, &rv);
+        if (mx4sio_mod_id < 0 || rv == MODULE_NO_RESIDENT_END) {
+            D_PRINTF("failed to load mx4sio module (ID=%d, ret=%d), abort.\n", mx4sio_mod_id, rv);
             return -1;
         }
     } else {
-        rv = SifExecModuleBuffer(mx4sio_bd_rpc_v_irx, size_mx4sio_bd_rpc_v_irx, 0, NULL, NULL);
-        if (rv < 0) {
-            D_PRINTF("failed to load mx4sio module\n");
+        mx4sio_mod_id = SifExecModuleBuffer(mx4sio_bd_rpc_v_irx, size_mx4sio_bd_rpc_v_irx, 0, NULL, &rv);
+        if (mx4sio_mod_id < 0 || rv == MODULE_NO_RESIDENT_END) {
+            D_PRINTF("failed to load mx4sio module (ID=%d, ret=%d)\n", mx4sio_mod_id, rv);
             SleepThread();
         }
     }

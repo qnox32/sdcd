@@ -43,36 +43,21 @@ ee_thread_t rpc_thread;
 static char *msg_buffer;
 static uint32_t msg_buffer_len = 0;
 
+#define IMPORT_BIN2C(_IRX) \
+    extern unsigned char _IRX[]; \
+    extern unsigned int size_##_IRX
+
 /* module defs */
-extern unsigned char iomanX_irx[];
-extern unsigned int size_iomanX_irx;
-
-extern unsigned char fileXio_irx[];
-extern unsigned int size_fileXio_irx;
-
-extern unsigned char usbd_irx[];
-extern unsigned int size_usbd_irx;
-
-extern unsigned char bdm_irx[];
-extern unsigned int size_bdm_irx;
-
-extern unsigned char bdmfs_fatfs_irx[];
-extern unsigned int size_bdmfs_fatfs_irx;
-
-extern unsigned char usbmass_bd_irx[];
-extern unsigned int size_usbmass_bd_irx;
-
-extern unsigned char padman_irx[];
-extern unsigned int size_padman_irx;
-
-extern unsigned char sio2man_irx[];
-extern unsigned int size_sio2man_irx;
-
-extern unsigned char mx4sio_bd_rpc_irx[];
-extern unsigned int size_mx4sio_bd_rpc_irx;
-
-extern unsigned char mx4sio_bd_rpc_v_irx[];
-extern unsigned int size_mx4sio_bd_rpc_v_irx;
+IMPORT_BIN2C(iomanX_irx);
+IMPORT_BIN2C(fileXio_irx);
+IMPORT_BIN2C(usbd_irx);
+IMPORT_BIN2C(bdm_irx);
+IMPORT_BIN2C(bdmfs_fatfs_irx);
+IMPORT_BIN2C(usbmass_bd_irx);
+IMPORT_BIN2C(padman_irx);
+IMPORT_BIN2C(sio2man_irx);
+IMPORT_BIN2C(mx4sio_bd_rpc_irx);
+IMPORT_BIN2C(mx4sio_bd_rpc_v_irx);
 
 static uint32_t mx4sio_mod_id;
 
